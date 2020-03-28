@@ -12,8 +12,9 @@ public class AgentManager : MonoBehaviour
 
     private List<Agent> agents = new List<Agent>();
     private GameObject agentParent;
+    private static HashSet<GameObject> agentsObjs = new HashSet<GameObject>();
 
-    private const float UPDATE_RATE = 0.5f;
+    private const float UPDATE_RATE = 0.0f;
 
     #region Unity Functions
 
@@ -24,10 +25,10 @@ public class AgentManager : MonoBehaviour
         agentParent = GameObject.Find("Agents");
         for (int i = 0; i < agentCount; i++)
         {
-            var randPos = new Vector3((Random.value - 0.5f) * agentSpawnRadius, 1, (Random.value - 0.5f) * agentSpawnRadius);
+            var randPos = new Vector3((Random.value - 0.5f) * agentSpawnRadius, 0, (Random.value - 0.5f) * agentSpawnRadius);
             NavMeshHit hit;
             NavMesh.SamplePosition(randPos, out hit, 10, NavMesh.AllAreas);
-            randPos = hit.position;
+            randPos = hit.position + Vector3.up;
 
             GameObject agent = null;
             agent = Instantiate(agentPrefab, randPos, Quaternion.identity);
@@ -36,6 +37,7 @@ public class AgentManager : MonoBehaviour
             var agentScript = agent.GetComponent<Agent>();
 
             agents.Add(agentScript);
+            agentsObjs.Add(agent);
         }
 
         StartCoroutine(Run());
@@ -45,11 +47,38 @@ public class AgentManager : MonoBehaviour
     {
         #region Visualization
         
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (true)
+            {
+                var point = Camera.main.ScreenToWorldPoint(Input.mousePosition + Vector3.forward * 10);
+                var dir = point - Camera.main.transform.position;
+                RaycastHit rcHit;
+                if (Physics.Raycast(point, dir, out rcHit))
+                {
+                    point = rcHit.point;
+
+                    SetAgentDestinations(point);
+                }
+            } else
+            {
+                var randPos = new Vector3((Random.value - 0.5f) * agentSpawnRadius, 0, (Random.value - 0.5f) * agentSpawnRadius);
+
+                NavMeshHit hit;
+                NavMesh.SamplePosition(randPos, out hit, 1.0f, NavMesh.AllAreas);
+                print(hit.position);
+                Debug.DrawLine(hit.position, hit.position + Vector3.up * 10, Color.red, 1000000);
+                foreach (var agent in agents)
+                {
+                    //agent.ComputePath(hit.position);
+                }
+            }
+        }
 
 #if UNITY_EDITOR
         if (Application.isFocused)
         {
-            UnityEditor.SceneView.FocusWindowIfItsOpen(typeof(UnityEditor.SceneView));
+            //UnityEditor.SceneView.FocusWindowIfItsOpen(typeof(UnityEditor.SceneView));
         }
 #endif
 
@@ -62,7 +91,10 @@ public class AgentManager : MonoBehaviour
 
         while (true)
         {
-            
+            foreach (var agent in agents)
+            {
+                agent.ApplyForce();
+            }
 
             yield return new WaitForSeconds(UPDATE_RATE);
         }
@@ -70,20 +102,35 @@ public class AgentManager : MonoBehaviour
 
     #endregion
 
-    #region Incomplete Functions
-    
+    #region Public Functions
+
+    public static bool IsAgent(GameObject obj)
+    {
+        return agentsObjs.Contains(obj);
+    }
+
+    public void SetAgentDestinations(Vector3 destination)
+    {
+        NavMeshHit hit;
+        NavMesh.SamplePosition(destination, out hit, 10, NavMesh.AllAreas);
+        foreach (var agent in agents)
+        {
+            agent.ComputePath(hit.position);
+        }
+    }
+
     #endregion
 
     #region Private Functions
-    
+
     #endregion
 
     #region Visualization Functions
-    
+
     #endregion
 
     #region Utility Classes
-    
+
     private class Tuple<K,V>
     {
         public K Item1;
