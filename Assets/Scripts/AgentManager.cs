@@ -9,16 +9,18 @@ public class AgentManager : MonoBehaviour
     public int agentCount = 10;
     public float agentSpawnRadius = 20;
     public GameObject agentPrefab;
+    public static Dictionary<GameObject, Agent> agentsObjs = new Dictionary<GameObject, Agent>();
 
-    private List<Agent> agents = new List<Agent>();
+    private static List<Agent> agents = new List<Agent>();
     private GameObject agentParent;
-    private static HashSet<GameObject> agentsObjs = new HashSet<GameObject>();
+    private Vector3 destination;
 
-    private const float UPDATE_RATE = 0.0f;
+    public const float UPDATE_RATE = 0.0f;
+    private const int PATHFINDING_FRAME_SKIP = 25;
 
     #region Unity Functions
 
-    void Start()
+    void Awake()
     {
         Random.InitState(0);
 
@@ -35,9 +37,12 @@ public class AgentManager : MonoBehaviour
             agent.name = "Agent " + i;
             agent.transform.parent = agentParent.transform;
             var agentScript = agent.GetComponent<Agent>();
+            agentScript.radius = 0.3f;// Random.Range(0.2f, 0.6f);
+            agentScript.mass = 1;
+            agentScript.perceptionRadius = 3;
 
             agents.Add(agentScript);
-            agentsObjs.Add(agent);
+            agentsObjs.Add(agent, agentScript);
         }
 
         StartCoroutine(Run());
@@ -57,8 +62,6 @@ public class AgentManager : MonoBehaviour
                 if (Physics.Raycast(point, dir, out rcHit))
                 {
                     point = rcHit.point;
-
-                    SetAgentDestinations(point);
                 }
             } else
             {
@@ -89,14 +92,25 @@ public class AgentManager : MonoBehaviour
     {
         yield return null;
 
-        while (true)
+        for (int iterations = 0; ; iterations++)
         {
+            if (iterations % PATHFINDING_FRAME_SKIP == 0)
+            {
+                SetAgentDestinations(destination);
+            }
+
             foreach (var agent in agents)
             {
                 agent.ApplyForce();
             }
 
-            yield return new WaitForSeconds(UPDATE_RATE);
+            if (UPDATE_RATE == 0)
+            {
+                yield return null;
+            } else
+            {
+                yield return new WaitForSeconds(UPDATE_RATE);
+            }
         }
     }
 
@@ -106,7 +120,7 @@ public class AgentManager : MonoBehaviour
 
     public static bool IsAgent(GameObject obj)
     {
-        return agentsObjs.Contains(obj);
+        return agentsObjs.ContainsKey(obj);
     }
 
     public void SetAgentDestinations(Vector3 destination)
@@ -117,6 +131,14 @@ public class AgentManager : MonoBehaviour
         {
             agent.ComputePath(hit.position);
         }
+    }
+
+    public static void RemoveAgent(GameObject obj)
+    {
+        var agent = obj.GetComponent<Agent>();
+
+        agents.Remove(agent);
+        agentsObjs.Remove(obj);
     }
 
     #endregion

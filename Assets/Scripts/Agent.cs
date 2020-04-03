@@ -6,6 +6,10 @@ using UnityEngine.AI;
 
 public class Agent : MonoBehaviour
 {
+    public float radius;
+    public float mass;
+    public float perceptionRadius;
+
     private List<Vector3> path;
     private NavMeshAgent nma;
     private Rigidbody rb;
@@ -17,19 +21,52 @@ public class Agent : MonoBehaviour
         path = new List<Vector3>();
         nma = GetComponent<NavMeshAgent>();
         rb = GetComponent<Rigidbody>();
+
+        gameObject.transform.localScale = new Vector3(2 * radius, 1, 2 * radius);
+        nma.radius = radius;
+        rb.mass = mass;
+        GetComponent<SphereCollider>().radius = perceptionRadius / 2;
     }
 
     private void Update()
     {
-        if (path.Count > 0 && Vector3.Distance(transform.position, path[0]) < 1.25f)
+        if (path.Count > 1 && Vector3.Distance(transform.position, path[0]) < 1.1f)
+        {
+            path.RemoveAt(0);
+        } else if (path.Count == 1 && Vector3.Distance(transform.position, path[0]) < 2f)
         {
             path.RemoveAt(0);
 
             if (path.Count == 0)
             {
                 gameObject.SetActive(false);
+                AgentManager.RemoveAgent(gameObject);
             }
         }
+
+        #region Visualization
+
+        if (false)
+        {
+            if (path.Count > 0)
+            {
+                Debug.DrawLine(transform.position, path[0], Color.green);
+            }
+            for (int i = 0; i < path.Count - 1; i++)
+            {
+                Debug.DrawLine(path[i], path[i + 1], Color.yellow);
+            }
+        }
+
+        if (false)
+        {
+            foreach (var neighbor in perceivedNeighbors)
+            {
+                Debug.DrawLine(transform.position, neighbor.transform.position, Color.yellow);
+            }
+        }
+
+        #endregion
     }
 
     #region Public Functions
@@ -45,21 +82,28 @@ public class Agent : MonoBehaviour
         nma.enabled = false;
     }
 
+    public Vector3 GetVelocity()
+    {
+        return rb.velocity;
+    }
+
     #endregion
 
     #region Incomplete Functions
 
     private Vector3 ComputeForce()
     {
-        if (path.Count == 0)
+        var force = Vector3.zero;
+
+        if (force != Vector3.zero)
+        {
+            return force.normalized * Mathf.Min(force.magnitude, Parameters.maxSpeed);
+        } else
         {
             return Vector3.zero;
         }
-
-        var temp = path[0] - transform.position;
-        return temp.normalized * Mathf.Min(temp.magnitude, 1f);
     }
-
+    
     private Vector3 CalculateGoalForce()
     {
         return Vector3.zero;
@@ -85,12 +129,12 @@ public class Agent : MonoBehaviour
 
     public void OnTriggerEnter(Collider other)
     {
-        
-    }
 
+    }
+    
     public void OnTriggerExit(Collider other)
     {
-        
+
     }
 
     public void OnCollisionEnter(Collision collision)
