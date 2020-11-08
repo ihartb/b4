@@ -63,10 +63,10 @@ public class AgentManager : MonoBehaviour
                 {
                     point = rcHit.point;
                 }
-            } else
+            }
+            else
             {
                 var randPos = new Vector3((Random.value - 0.5f) * agentSpawnRadius, 0, (Random.value - 0.5f) * agentSpawnRadius);
-
                 NavMeshHit hit;
                 NavMesh.SamplePosition(randPos, out hit, 1.0f, NavMesh.AllAreas);
                 print(hit.position);

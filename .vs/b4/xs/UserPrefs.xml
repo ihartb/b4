@@ -1,10 +1,10 @@
 ﻿<Properties StartupConfiguration="{E3439162-B8C0-1286-4B6A-3A0EFE0E3513}|">
-  <MonoDevelop.Ide.Workbench ActiveDocument="Assets/Scripts/AgentManager.cs">
+  <MonoDevelop.Ide.Workbench ActiveDocument="Assets/Scripts/Agent.cs">
     <Files>
-      <File FileName="Assets/Scripts/Agent.cs" Line="147" Column="27" />
-      <File FileName="Assets/Scripts/AgentManager.cs" Line="20" Column="1" />
-      <File FileName="Assets/Scripts/Parameters.cs" />
-      <File FileName="Assets/Scripts/SlidingFrictionForceVisualizer.cs" />
+      <File FileName="Assets/Scripts/Agent.cs" Line="100" Column="18" />
+      <File FileName="Assets/Scripts/AgentManager.cs" Line="156" Column="21" />
+      <File FileName="Assets/Scripts/Parameters.cs" Line="8" Column="29" />
+      <File FileName="Assets/Scripts/SlidingFrictionForceVisualizer.cs" Line="22" Column="52" />
       <File FileName="Assets/Scripts/WallManager.cs" Line="18" Column="1" />
     </Files>
     <Pads>
@@ -13,7 +13,7 @@
           <Node name="b4" expanded="True">
             <Node name="Assets" expanded="True">
               <Node name="Scripts" expanded="True">
-                <Node name="AgentManager.cs" selected="True" />
+                <Node name="Agent.cs" selected="True" />
               </Node>
             </Node>
           </Node>
