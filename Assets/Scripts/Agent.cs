@@ -3,14 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.AI;
+using System;
 
 public class Agent : MonoBehaviour
 {
     public float radius;
     public float mass;
     public float perceptionRadius;
-    private bool growingSpiral = true;
-    private bool pursueAndEvade = false;
+    private bool growingSpiral = false;
+    private bool pursueAndEvade = true;
 
     private List<Vector3> path;
     private List<Vector3> spiral;
@@ -41,6 +42,21 @@ public class Agent : MonoBehaviour
         rb.mass = mass;
         GetComponent<SphereCollider>().radius = perceptionRadius / 2;
         Cursor.SetCursor(null, new Vector2(0, 0), CursorMode.Auto);
+        if (pursueAndEvade)
+        {
+            var renderer = GetComponent<Renderer>();
+            if (Int32.Parse(name.Substring(5)) % 2 == 0)
+            // evader
+            {
+                renderer.material.SetColor("_Color", Color.red);
+            }
+            else
+            // pursuer
+            {
+                renderer.material.SetColor("_Color", Color.green);
+
+            }
+        }
     }
 
     private void Update()
@@ -78,10 +94,10 @@ public class Agent : MonoBehaviour
                 }
             }
         }
-        manager.SetAgentDestinations(goal);
         // if (growingSpiral) return;
-        if (!growingSpiral)
+        if (!growingSpiral && !pursueAndEvade)
         {
+            manager.SetAgentDestinations(goal);
             if (path.Count > 1 && Vector3.Distance(transform.position, path[0]) < 1.1f)
             {
                 path.RemoveAt(0);
@@ -96,7 +112,7 @@ public class Agent : MonoBehaviour
                     }
                 }
         }
-        else
+        else if (growingSpiral)
         {
             spiral.Add(transform.position);
         }
@@ -164,6 +180,12 @@ public class Agent : MonoBehaviour
         {
             force = GrowingSpiral();
         }
+        else if (pursueAndEvade)
+        {
+            force = PursueAndEvade();
+            force += CalculateWallForce();
+            force += CalculateAgentForce();
+        }
         else
         {
             force = CalculateGoalForce();
@@ -229,7 +251,10 @@ public class Agent : MonoBehaviour
     private Vector3 CalculateWallForce()
     {
         Vector3 wallForce = Vector3.zero;
-
+        if (transform.position.x > 15.5) wallForce += new Vector3(-10f,0f,0f);
+        else if (transform.position.x < -15.5) wallForce += new Vector3(10f,0f,0f);
+        else if (transform.position.z > 15.5) wallForce += new Vector3(0f,0f,-10f);
+        else if (transform.position.z < -15.5) wallForce += new Vector3(0f,0f,10f);
         foreach (var neighborGameObject in perceivedWalls)
         {
             var dist = transform.position - neighborGameObject.transform.position;
@@ -295,6 +320,54 @@ public class Agent : MonoBehaviour
         var tangent = Vector3.Cross(Vector3.up, dir.normalized) * tangentSpeed;
 
         return tangent + dir;
+    }
+
+    private Vector3 PursueAndEvade()
+    {
+        Vector3 pursueAndEvadeForce = Vector3.zero;
+        if (Int32.Parse(name.Substring(5)) % 2 == 0)
+        // Evader
+        {
+            foreach (var neighborGameObject in perceivedNeighbors)
+            {
+
+                if (!AgentManager.IsAgent(neighborGameObject) ||
+                    Int32.Parse(neighborGameObject.name.Substring(5)) % 2 == 0)
+                {
+                    // skip if seeing another evader
+                    continue;
+                }
+                var desiredDir = transform.position - neighborGameObject.transform.position;
+                var desiredSpeed = Mathf.Min(desiredDir.magnitude, 5f);
+                pursueAndEvadeForce += (mass / Parameters.T) * (desiredDir.normalized * desiredSpeed - rb.velocity);
+                // var neighbor = AgentManager.agentsObjs[neighborGameObject];
+                // Vector3 dist = transform.position - neighborGameObject.transform.position - new Vector3(.5f,0f,.5f);
+                // Vector3 dir = dist.normalized;
+                // pursueAndEvadeForce += dir * 5f * dist.magnitude;
+            }
+        }
+        else
+        // Pursuer
+        {
+            foreach (var neighborGameObject in perceivedNeighbors)
+            {
+
+                if (!AgentManager.IsAgent(neighborGameObject) ||
+                    Int32.Parse(neighborGameObject.name.Substring(5)) % 2 == 1)
+                {
+                    // skip if seeing another Pursuer
+                    continue;
+                }
+                var desiredDir = (neighborGameObject.transform.position - transform.position);
+                var desiredSpeed = Mathf.Min(desiredDir.magnitude, 5f);
+                pursueAndEvadeForce += (mass / Parameters.T) * (desiredDir.normalized * desiredSpeed - rb.velocity);
+
+                // Vector3 dist = transform.position - neighborGameObject.transform.position - new Vector3(.5f,0f,.5f);
+                // Vector3 dir = dist.normalized;
+                // pursueAndEvadeForce -= dir * 5f * dist.magnitude;
+            }
+        }
+        return pursueAndEvadeForce;
     }
 
     public void ApplyForce()

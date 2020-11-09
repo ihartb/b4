@@ -8,8 +8,8 @@
 - [x] free look camera point click selection
 
 ## P2
-- [ ] 2 of the following single-agent behaviors:
-    - [ ] pursue and evade
+- [x] 2 of the following single-agent behaviors:
+    - [x] pursue and evade
     - [ ] wall follower
     - [x] growing spiral
 - [ ] 2 of the following group behaviors:
