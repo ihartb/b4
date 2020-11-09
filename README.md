@@ -8,6 +8,11 @@
 - [x] free look camera point click selection
 
 ## P2
-- [ ] pursue and evade / wall follower
-- [x] started the growing spiral
-- [ ] 2 of the group things
+- [ ] 2 of the following single-agent behaviors:
+    - [ ] pursue and evade
+    - [ ] wall follower
+    - [x] growing spiral
+- [ ] 2 of the following group behaviors:
+    - [ ] Leader Following
+    - [ ] Crowd following
+    - [ ] Queueing

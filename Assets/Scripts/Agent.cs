@@ -9,9 +9,10 @@ public class Agent : MonoBehaviour
     public float radius;
     public float mass;
     public float perceptionRadius;
-    private bool growingSpiral = false;
+    private bool growingSpiral = true;
 
     private List<Vector3> path;
+    private List<Vector3> spiral;
     private NavMeshAgent nma;
     private Rigidbody rb;
 
@@ -29,10 +30,11 @@ public class Agent : MonoBehaviour
     {
         manager = FindObjectOfType<AgentManager>();
         path = new List<Vector3>();
+        spiral = new List<Vector3>();
         nma = GetComponent<NavMeshAgent>();
         rb = GetComponent<Rigidbody>();
         currentRotation = new Vector2(Camera.main.transform.rotation.y,Camera.main.transform.rotation.x);
-
+        // if (growingSpiral) transform.position = new Vector3(0f,1f,0f);
         gameObject.transform.localScale = new Vector3(2 * radius, 1, 2 * radius);
         nma.radius = radius;
         rb.mass = mass;
@@ -76,23 +78,36 @@ public class Agent : MonoBehaviour
             }
         }
         manager.SetAgentDestinations(goal);
-
-        if (path.Count > 1 && Vector3.Distance(transform.position, path[0]) < 1.1f)
+        // if (growingSpiral) return;
+        if (!growingSpiral)
         {
-            path.RemoveAt(0);
-        } else if (path.Count == 1 && Vector3.Distance(transform.position, path[0]) < 2f)
-        {
-            path.RemoveAt(0);
-
-            if (path.Count == 0)
+            if (path.Count > 1 && Vector3.Distance(transform.position, path[0]) < 1.1f)
             {
-                gameObject.SetActive(false);
-                AgentManager.RemoveAgent(gameObject);
-            }
+                path.RemoveAt(0);
+                } else if (path.Count == 1 && Vector3.Distance(transform.position, path[0]) < 2f)
+                {
+                    path.RemoveAt(0);
+
+                    if (path.Count == 0)
+                    {
+                        gameObject.SetActive(false);
+                        AgentManager.RemoveAgent(gameObject);
+                    }
+                }
+        }
+        else
+        {
+            spiral.Add(transform.position);
         }
 
         #region Visualization
-
+        if (growingSpiral)
+        {
+            for (int i = 0; i < spiral.Count - 1; i++)
+            {
+                Debug.DrawLine(spiral[i], spiral[i + 1], Color.yellow);
+            }
+        }
         if (false)
         {
             if (path.Count > 0)
@@ -263,7 +278,7 @@ public class Agent : MonoBehaviour
 
     private Vector3 GrowingSpiral()
     {
-        var totalmagnitude = 2f;
+        var totalmagnitude = 1f;
         //direction from position to center & force proportional to magnitude direction
         var dir = (Vector3.zero - transform.position); //towards center
 
