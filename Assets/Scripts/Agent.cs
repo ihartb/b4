@@ -10,8 +10,8 @@ public class Agent : MonoBehaviour
     public float radius;
     public float mass;
     public float perceptionRadius;
-    private bool growingSpiral = false;
-    private bool pursueAndEvade = true;
+    private bool growingSpiral = true;
+    private bool pursueAndEvade = false;
 
     private List<Vector3> path;
     private List<Vector3> spiral;
@@ -179,6 +179,8 @@ public class Agent : MonoBehaviour
         if (growingSpiral)
         {
             force = GrowingSpiral();
+            force += CalculateWallForce();
+            force += CalculateAgentForce();
         }
         else if (pursueAndEvade)
         {
