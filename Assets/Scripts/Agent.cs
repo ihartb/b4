@@ -9,6 +9,7 @@ public class Agent : MonoBehaviour
     public float radius;
     public float mass;
     public float perceptionRadius;
+    private bool growingSpiral = false;
 
     private List<Vector3> path;
     private NavMeshAgent nma;
@@ -17,20 +18,65 @@ public class Agent : MonoBehaviour
     private HashSet<GameObject> perceivedNeighbors = new HashSet<GameObject>();
     private HashSet<GameObject> perceivedWalls = new HashSet<GameObject>();
 
+    private float speed = 5f;
+    private float rotation = 2f;
+    private Vector2 currentRotation;
+    private AgentManager manager;
+    private Vector3 goal = Vector3.zero;
+
+
     void Start()
     {
+        manager = FindObjectOfType<AgentManager>();
         path = new List<Vector3>();
         nma = GetComponent<NavMeshAgent>();
         rb = GetComponent<Rigidbody>();
+        currentRotation = new Vector2(Camera.main.transform.rotation.y,Camera.main.transform.rotation.x);
 
         gameObject.transform.localScale = new Vector3(2 * radius, 1, 2 * radius);
         nma.radius = radius;
         rb.mass = mass;
         GetComponent<SphereCollider>().radius = perceptionRadius / 2;
+        Cursor.SetCursor(null, new Vector2(0, 0), CursorMode.Auto);
     }
 
     private void Update()
     {
+        var verticalSpeed = speed;
+        float angle = Mathf.PI * currentRotation.x / 180.0f;
+        // print(currentRotation.x.ToString() + " "+currentRotation.y.ToString());
+        float forward_component = Input.GetAxis("Horizontal") * Mathf.Cos(-angle)
+                                + Input.GetAxis("Vertical")   * Mathf.Sin(angle);
+        float horizontal_component =  Input.GetAxis("Horizontal") * Mathf.Sin(-angle)
+                                    + Input.GetAxis("Vertical")   * Mathf.Cos(angle);
+        var moveVector =
+            new Vector3(forward_component, 0, horizontal_component) * speed
+            + Vector3.up * (Input.GetKey("space") ? verticalSpeed : 0)
+            - Vector3.up * (Input.GetKey("left shift") ? verticalSpeed : 0);
+        Camera.main.transform.position += moveVector * Time.deltaTime;
+
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = true;
+        currentRotation.x += Input.GetAxis("Mouse X") * rotation;
+        currentRotation.y -= Input.GetAxis("Mouse Y") * rotation;
+        Camera.main.transform.rotation = Quaternion.Euler(currentRotation.y, currentRotation.x, 0);
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
+
+            if (Physics.Raycast(ray.origin, ray.direction, out hit))
+            {
+                if (hit.collider.gameObject.name.Equals("Plane"))
+                {
+                    goal = hit.point;
+                    // target.transform.position = hit.point;
+                }
+            }
+        }
+        manager.SetAgentDestinations(goal);
+
         if (path.Count > 1 && Vector3.Distance(transform.position, path[0]) < 1.1f)
         {
             path.RemoveAt(0);
@@ -68,6 +114,8 @@ public class Agent : MonoBehaviour
         }
 
         #endregion
+
+
     }
 
     #region Public Functions
@@ -95,9 +143,17 @@ public class Agent : MonoBehaviour
     private Vector3 ComputeForce()
     {
 
-        Vector3 force = CalculateGoalForce();
-        force += CalculateWallForce();
-        force += CalculateAgentForce();
+        Vector3 force;
+        if (growingSpiral)
+        {
+            force = GrowingSpiral();
+        }
+        else
+        {
+            force = CalculateGoalForce();
+            force += CalculateWallForce();
+            force += CalculateAgentForce();
+        }
         force.y = 0;
         print("force mag: "+force.magnitude.ToString()+"\t"+force.ToString());
         //var force = growingSpiral();
@@ -205,7 +261,7 @@ public class Agent : MonoBehaviour
         return wallForce;
     }
 
-    private Vector3 growingSpiral()
+    private Vector3 GrowingSpiral()
     {
         var totalmagnitude = 2f;
         //direction from position to center & force proportional to magnitude direction

@@ -123,9 +123,8 @@ public class AgentManager : MonoBehaviour
         return agentsObjs.ContainsKey(obj);
     }
 
-    public void SetAgentDestinations(Vector3 _destination)
+    public void SetAgentDestinations(Vector3 destination)
     {
-        destination = _destination;
         NavMeshHit hit;
         NavMesh.SamplePosition(destination, out hit, 10, NavMesh.AllAreas);
         foreach (var agent in agents)
