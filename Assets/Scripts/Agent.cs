@@ -10,6 +10,7 @@ public class Agent : MonoBehaviour
     public float mass;
     public float perceptionRadius;
     private bool growingSpiral = true;
+    private bool pursueAndEvade = false;
 
     private List<Vector3> path;
     private List<Vector3> spiral;
