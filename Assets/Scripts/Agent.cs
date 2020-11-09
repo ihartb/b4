@@ -95,7 +95,7 @@ public class Agent : MonoBehaviour
     private Vector3 ComputeForce()
     {
 
-        var force = CalculateGoalForce();
+        Vector3 force = CalculateGoalForce();
         force += CalculateWallForce();
         force += CalculateAgentForce();
         force.y = 0;
@@ -128,7 +128,7 @@ public class Agent : MonoBehaviour
 
     private Vector3 CalculateAgentForce()
     {
-        var agentForce = Vector3.zero;
+        Vector3 agentForce = Vector3.zero;
 
         foreach (var neighborGameObject in perceivedNeighbors)
         {
@@ -156,11 +156,31 @@ public class Agent : MonoBehaviour
 
     private Vector3 CalculateWallForce()
     {
-        var wallForce = Vector3.zero;
+        Vector3 wallForce = Vector3.zero;
 
         foreach (var neighborGameObject in perceivedWalls)
         {
-
+            var dist = transform.position - neighborGameObject.transform.position;
+            dist.y = 0f;
+            if (neighborGameObject.name == "Cube" ||
+                neighborGameObject.name == "Cube (2)")
+            {
+                dist.x = 0f;
+                if (neighborGameObject.name == "Cube" && dist.z > -0.5) dist.z = -0.25f;
+                else if (neighborGameObject.name == "Cube (2)" && dist.z < 0.5) dist.z = 0.25f;
+            }
+            else if (neighborGameObject.name == "Cube (6)" ||
+                neighborGameObject.name == "Cube (7)")
+            {
+                dist.z = 0f;
+                if (neighborGameObject.name == "Cube (6)" && dist.x > -0.5) dist.x = -0.25f;
+                else if (neighborGameObject.name == "Cube (7)" && dist.x < 0.5) dist.x = 0.25f;
+            }
+            else
+            {
+                if (Mathf.Abs(dist.x) > Mathf.Abs(dist.z)) dist.z = 0f;
+                else dist.x = 0f;
+            }
             // if (!WallManager.IsWall(neighborGameObject))
             // {
             //     print("is not wall " + neighborGameObject.name);
@@ -170,14 +190,10 @@ public class Agent : MonoBehaviour
             // {
             //     print("wall "+neighborGameObject.name);
             // }
-            var dist = transform.position - neighborGameObject.transform.position;
-            dist.y = 0f;
-            if (Mathf.Abs(dist.x) > Mathf.Abs(dist.z)) dist.z = 0;
-            else dist.x = 0;
 
             var collisionDist = 0.5f-dist.magnitude;
             // var funcG = collisionDist;
-            var funcG = Mathf.Abs(collisionDist) < 0.00001f ? collisionDist : 0f;
+            var funcG = Mathf.Abs(collisionDist) < 0.00000001f ? collisionDist : 0f;
             var tangent = Vector3.Cross(Vector3.up, dist.normalized).normalized;
             Vector3 n = dist.normalized * 1f / dist.magnitude;
             n = n.normalized;
@@ -227,8 +243,8 @@ public class Agent : MonoBehaviour
         }
 
         else if (WallManager.IsWall(other.gameObject)
-                || other.gameObject.name.Substring(0,4) == "Wall")
-                // || other.gameObject.name.Substring(0,4) == "Cube")
+                || other.gameObject.name.Substring(0,4) == "Wall"
+                || other.gameObject.name.Substring(0,4) == "Cube")
         {
             // print("wall added"+other.gameObject.name);
             perceivedWalls.Add(other.gameObject);
