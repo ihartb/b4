@@ -5,7 +5,7 @@
 - [x] agent forces
 - [x] wall forces
     - [ ] Fix outer walls
-- [ ] free look camera point click selection
+- [x] free look camera point click selection
 
 ## P2
 - [ ] pursue and evade / wall follower

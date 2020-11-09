@@ -142,7 +142,7 @@ public class Agent : MonoBehaviour
             var dir = (transform.position - neighborGameObject.transform.position).normalized;
             var collisionDist = (radius + neighbor.radius) - Vector3.Distance(transform.position, neighborGameObject.transform.position);
             // var funcG = Mathf.Max(0f, collisionDist);
-            var funcG = Mathf.Abs(collisionDist) < 0.00000001f ? collisionDist : 0f;
+            var funcG = Mathf.Abs(collisionDist) < 0.00000000001f ? collisionDist : 0f;
             // var funcG = collisionDist;
             var tangent = Vector3.Cross(Vector3.up, dir).normalized;
 
@@ -193,7 +193,7 @@ public class Agent : MonoBehaviour
 
             var collisionDist = 0.5f-dist.magnitude;
             // var funcG = collisionDist;
-            var funcG = Mathf.Abs(collisionDist) < 0.00000001f ? collisionDist : 0f;
+            var funcG = Mathf.Abs(collisionDist) < 0.00000000001f ? collisionDist : 0f;
             var tangent = Vector3.Cross(Vector3.up, dist.normalized).normalized;
             Vector3 n = dist.normalized * 1f / dist.magnitude;
             n = n.normalized;
