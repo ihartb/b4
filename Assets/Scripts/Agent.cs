@@ -10,11 +10,14 @@ public class Agent : MonoBehaviour
     public float radius;
     public float mass;
     public float perceptionRadius;
-    private bool growingSpiral = true;
+    private bool growingSpiral = false;
     private bool pursueAndEvade = false;
+    private bool leaderFollowing = true;
+    private bool crowdFollowing = false;
 
     private List<Vector3> path;
     private List<Vector3> spiral;
+    private List<Vector3> vectorPath;
     private NavMeshAgent nma;
     private Rigidbody rb;
 
@@ -26,13 +29,19 @@ public class Agent : MonoBehaviour
     private Vector2 currentRotation;
     private AgentManager manager;
     private Vector3 goal = Vector3.zero;
+    private Agent leader;
 
+    public Vector3 GetPathVector()
+    {
+        return (goal - transform.position).normalized;
+    }
 
     void Start()
     {
         manager = FindObjectOfType<AgentManager>();
         path = new List<Vector3>();
         spiral = new List<Vector3>();
+        vectorPath = new List<Vector3>();
         nma = GetComponent<NavMeshAgent>();
         rb = GetComponent<Rigidbody>();
         currentRotation = new Vector2(Camera.main.transform.rotation.y,Camera.main.transform.rotation.x);
@@ -55,6 +64,19 @@ public class Agent : MonoBehaviour
             {
                 renderer.material.SetColor("_Color", Color.green);
 
+            }
+        }
+        else if (leaderFollowing)
+        {
+            var renderer = GetComponent<Renderer>();
+            if (Int32.Parse(name.Substring(5)) == 0)
+            // leader
+            {
+                renderer.material.SetColor("_Color", Color.red);
+            }
+            else
+            {
+                leader = GameObject.Find("Agent 0").GetComponent<Agent>();
             }
         }
     }
@@ -95,7 +117,7 @@ public class Agent : MonoBehaviour
             }
         }
         // if (growingSpiral) return;
-        if (!growingSpiral && !pursueAndEvade)
+        if (!growingSpiral && !pursueAndEvade && !crowdFollowing && (!leaderFollowing || (leaderFollowing && Int32.Parse(name.Substring(5)) == 0)))
         {
             manager.SetAgentDestinations(goal);
             if (path.Count > 1 && Vector3.Distance(transform.position, path[0]) < 1.1f)
@@ -105,7 +127,7 @@ public class Agent : MonoBehaviour
                 {
                     path.RemoveAt(0);
 
-                    if (path.Count == 0)
+                    if (path.Count == 0 && !leaderFollowing)
                     {
                         gameObject.SetActive(false);
                         AgentManager.RemoveAgent(gameObject);
@@ -115,6 +137,11 @@ public class Agent : MonoBehaviour
         else if (growingSpiral)
         {
             spiral.Add(transform.position);
+        }
+        else if (leaderFollowing)
+        {
+            vectorPath.Add(transform.position);
+            if (vectorPath.Count == 3) vectorPath.RemoveAt(0);
         }
 
         #region Visualization
@@ -188,6 +215,18 @@ public class Agent : MonoBehaviour
             force += CalculateWallForce();
             force += CalculateAgentForce();
         }
+        else if (leaderFollowing)
+        {
+            force = LeaderFollowing();
+            force += CalculateWallForce();
+            force += CalculateAgentForce();
+        }
+        else if (crowdFollowing)
+        {
+            force = CrowdFollowing();
+            force += CalculateWallForce();
+            force += CalculateAgentForce();
+        }
         else
         {
             force = CalculateGoalForce();
@@ -241,10 +280,11 @@ public class Agent : MonoBehaviour
             var funcG = Mathf.Abs(collisionDist) < 0.00000000001f ? collisionDist : 0f;
             // var funcG = collisionDist;
             var tangent = Vector3.Cross(Vector3.up, dir).normalized;
-
-            agentForce += Parameters.A * Mathf.Exp(collisionDist / Parameters.B) * dir;
-            agentForce += (Parameters.k * funcG) * dir;
-            agentForce += Parameters.Kappa * funcG * Vector3.Dot(rb.velocity - neighbor.GetVelocity(), tangent) * tangent;
+            var multiplier = 1f;
+            if (neighborGameObject.name == "Agent 0" && leaderFollowing) multiplier = 2f;
+            agentForce += multiplier * Parameters.A * Mathf.Exp(collisionDist / Parameters.B) * dir;
+            agentForce += multiplier * (Parameters.k * funcG) * dir;
+            agentForce += multiplier * Parameters.Kappa * funcG * Vector3.Dot(rb.velocity - neighbor.GetVelocity(), tangent) * tangent;
         }
 
         return agentForce;
@@ -370,6 +410,53 @@ public class Agent : MonoBehaviour
             }
         }
         return pursueAndEvadeForce;
+    }
+
+    public Vector3 LeaderFollowing()
+    {
+        Vector3 leaderFollowingForce = Vector3.zero;
+        if (Int32.Parse(name.Substring(5)) == 0)
+        {
+            leaderFollowingForce += CalculateGoalForce();
+        }
+        else
+        {
+            var tangent = Vector3.Cross(Vector3.up, leader.GetPathVector().normalized).normalized;
+            Vector3 followerGoal = leader.transform.position;
+            // followerGoal -= 1f*leader.GetPathVector();
+            followerGoal += 1*Mathf.Pow(-1,Int32.Parse(name.Substring(5)))*tangent;
+            var desiredDir = (followerGoal - transform.position);
+            var desiredSpeed = Mathf.Min(desiredDir.magnitude, 5f);
+            leaderFollowingForce += (mass / Parameters.T) * (desiredDir.normalized * desiredSpeed - rb.velocity);
+            // find leader and set force to behind leader
+            // Vector3 followerGoal = leader.transform.position - 1f*leader.GetPathVector();
+            // var desiredDir = (followerGoal - transform.position);
+            // var desiredSpeed = Mathf.Min(desiredDir.magnitude, 5f);
+            // leaderFollowingForce += (mass / Parameters.T) * (desiredDir.normalized * desiredSpeed - rb.velocity);
+            // calculate repulsion of leader's path (say 1m ahead along leader's path)
+            Vector3 followerRepulsion = leader.transform.position + 1f*leader.GetPathVector();
+            var desiredDir1 = transform.position - followerRepulsion;
+            var desiredSpeed1 = Mathf.Min(desiredDir1.magnitude, 5f);
+            leaderFollowingForce += 1f * (mass / Parameters.T) * (desiredDir1.normalized * desiredSpeed1 - rb.velocity);
+
+            // var dir = (transform.position - followerRepulsion).normalized;
+            // var collisionDist = (radius + leader.radius) - Vector3.Distance(transform.position, followerRepulsion);
+            // // var funcG = Mathf.Max(0f, collisionDist);
+            // var funcG = Mathf.Abs(collisionDist) < 0.00000000001f ? collisionDist : 0f;
+            // // var funcG = collisionDist;
+            // var tangent = Vector3.Cross(Vector3.up, dir).normalized;
+            //
+            // leaderFollowingForce += Parameters.A * Mathf.Exp(collisionDist / Parameters.B) * dir;
+            // leaderFollowingForce += (Parameters.k * funcG) * dir;
+            // leaderFollowingForce += Parameters.Kappa * funcG * Vector3.Dot(rb.velocity - leader.GetVelocity(), tangent) * tangent;
+        }
+        return leaderFollowingForce;
+    }
+
+    public Vector3 CrowdFollowing()
+    {
+        Vector3 crowdFollowingForce = Vector3.zero;
+        return crowdFollowingForce;
     }
 
     public void ApplyForce()
