@@ -1,9 +1,10 @@
 
 # TODO
-## P1 
+## P1
 - [x] goal forces
-- [x] agent forces 
-- [x] wall forces...sometimes still goes thru walls if agent forces too high
+- [x] agent forces
+- [x] wall forces
+    - [ ] Fix outer walls
 - [ ] free look camera point click selection
 
 ## P2

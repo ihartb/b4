@@ -95,8 +95,11 @@ public class Agent : MonoBehaviour
     private Vector3 ComputeForce()
     {
 
-        var force = CalculateGoalForce() + CalculateWallForce() + CalculateAgentForce();
-
+        var force = CalculateGoalForce();
+        force += CalculateWallForce();
+        force += CalculateAgentForce();
+        force.y = 0;
+        print("force mag: "+force.magnitude.ToString()+"\t"+force.ToString());
         //var force = growingSpiral();
 
         if (force != Vector3.zero)
@@ -138,7 +141,9 @@ public class Agent : MonoBehaviour
             var neighbor = AgentManager.agentsObjs[neighborGameObject];
             var dir = (transform.position - neighborGameObject.transform.position).normalized;
             var collisionDist = (radius + neighbor.radius) - Vector3.Distance(transform.position, neighborGameObject.transform.position);
-            var funcG = Mathf.Max(0f, collisionDist);
+            // var funcG = Mathf.Max(0f, collisionDist);
+            var funcG = Mathf.Abs(collisionDist) < 0.00000001f ? collisionDist : 0f;
+            // var funcG = collisionDist;
             var tangent = Vector3.Cross(Vector3.up, dir).normalized;
 
             agentForce += Parameters.A * Mathf.Exp(collisionDist / Parameters.B) * dir;
@@ -153,32 +158,40 @@ public class Agent : MonoBehaviour
     {
         var wallForce = Vector3.zero;
 
-        foreach (var neighborGameObject in perceivedNeighbors)
+        foreach (var neighborGameObject in perceivedWalls)
         {
 
-            if (!WallManager.IsWall(neighborGameObject))
-            {
-                continue;
-            }
+            // if (!WallManager.IsWall(neighborGameObject))
+            // {
+            //     print("is not wall " + neighborGameObject.name);
+            //     continue;
+            // }
+            // else
+            // {
+            //     print("wall "+neighborGameObject.name);
+            // }
             var dist = transform.position - neighborGameObject.transform.position;
-
-            if (dist.x > dist.z) dist.z = 0;
+            dist.y = 0f;
+            if (Mathf.Abs(dist.x) > Mathf.Abs(dist.z)) dist.z = 0;
             else dist.x = 0;
 
-            var collisionDist = dist.magnitude - .5f;
-            var funcG = collisionDist > 0f ? collisionDist : 0f;
+            var collisionDist = 0.5f-dist.magnitude;
+            // var funcG = collisionDist;
+            var funcG = Mathf.Abs(collisionDist) < 0.00001f ? collisionDist : 0f;
             var tangent = Vector3.Cross(Vector3.up, dist.normalized).normalized;
-
-            wallForce += (Parameters.WALL_A * Mathf.Exp(collisionDist / Parameters.WALL_B) + Parameters.WALL_k * funcG) * dist.normalized;
-            wallForce += Parameters.WALL_Kappa * funcG * Vector3.Dot(rb.velocity, tangent) * tangent;
+            Vector3 n = dist.normalized * 1f / dist.magnitude;
+            n = n.normalized;
+            wallForce += (Parameters.WALL_A * Mathf.Exp(collisionDist / Parameters.WALL_B)) * n;
+            wallForce += (Parameters.WALL_k * funcG) * n;
+            wallForce -= Parameters.WALL_Kappa * funcG * Vector3.Dot(rb.velocity, tangent) * tangent;
+            print(n.ToString() + "\t"+collisionDist.ToString() + "\t"+dist.magnitude.ToString() + "\t"+ wallForce.ToString());
         }
-
         return wallForce;
     }
 
     private Vector3 growingSpiral()
     {
-        var totalmagnitude = 2f; 
+        var totalmagnitude = 2f;
         //direction from position to center & force proportional to magnitude direction
         var dir = (Vector3.zero - transform.position); //towards center
 
@@ -193,7 +206,7 @@ public class Agent : MonoBehaviour
         var tangentSpeed = 2f;
         var tangent = Vector3.Cross(Vector3.up, dir.normalized) * tangentSpeed;
 
-        return tangent + dir; 
+        return tangent + dir;
     }
 
     public void ApplyForce()
@@ -208,17 +221,25 @@ public class Agent : MonoBehaviour
     {
         if (AgentManager.IsAgent(other.gameObject))
         {
+            // print("agent added"+other.gameObject.name);
             perceivedNeighbors.Add(other.gameObject);
 
         }
 
-        if (WallManager.IsWall(other.gameObject))
+        else if (WallManager.IsWall(other.gameObject)
+                || other.gameObject.name.Substring(0,4) == "Wall")
+                // || other.gameObject.name.Substring(0,4) == "Cube")
         {
+            // print("wall added"+other.gameObject.name);
             perceivedWalls.Add(other.gameObject);
 
         }
+        else
+        {
+            print("unknown found "+other.gameObject.name);
+        }
     }
-    
+
     public void OnTriggerExit(Collider other)
     {
         if (perceivedNeighbors.Contains(other.gameObject))
@@ -235,12 +256,12 @@ public class Agent : MonoBehaviour
 
     public void OnCollisionEnter(Collision collision)
     {
-        
+
     }
 
     public void OnCollisionExit(Collision collision)
     {
-        
+
     }
 
     #endregion
