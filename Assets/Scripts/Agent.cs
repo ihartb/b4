@@ -11,9 +11,9 @@ public class Agent : MonoBehaviour
     public float mass;
     public float perceptionRadius;
     private bool growingSpiral = false;
-    private bool pursueAndEvade = true;
+    private bool pursueAndEvade = false;
     private bool leaderFollowing = false;
-    private bool crowdFollowing = false;
+    private bool crowdFollowing = true;
 
     private List<Vector3> path;
     private List<Vector3> spiral;
@@ -31,6 +31,8 @@ public class Agent : MonoBehaviour
     //leader follower
     private Agent leader;
     private Vector3 prevLeaderVel;
+
+    private Vector3 direction = Vector3.zero;
 
     void Start()
     {
@@ -243,9 +245,14 @@ public class Agent : MonoBehaviour
         }
         else if (crowdFollowing)
         {
-            var weight = .4f;
-            force = weight * CrowdFollowing() + (1 - weight) * CalculateGoalForce();
-            force = force.normalized * 5f;
+            force = CrowdFollowingGoalForce();
+            force += CalculateWallForce();
+            force += CalculateAgentForce();
+
+            //old code not according to ppt
+            //var weight = .4f;
+            //force = weight * CrowdFollowingGoalForce() + (1 - weight) * CalculateGoalForce();
+            //force = force.normalized * 5f;
         }
         else
         {
@@ -453,25 +460,46 @@ public class Agent : MonoBehaviour
         return leaderFollowingForce;
     }
 
-    public Vector3 CrowdFollowing()
+    public Vector3 CrowdFollowingGoalForce()
     {
-        Vector3 crowdFollowingForce = Vector3.zero;
+        Vector3 neighborDir = Vector3.zero;
         var count = 0;
+
         foreach (var neighborGameObject in perceivedNeighbors)
         {
             if (!AgentManager.IsAgent(neighborGameObject)) continue;
             var neighbor = AgentManager.agentsObjs[neighborGameObject];
-            var desiredDir = (neighbor.transform.position - transform.position);
-            var desiredSpeed = Mathf.Min(desiredDir.magnitude - (radius * 3), 5f);
-            var goalForce = (desiredDir.normalized * desiredSpeed - rb.velocity) / Time.deltaTime;
-            var collisionDist = (radius + neighbor.radius) - Vector3.Distance(transform.position, neighborGameObject.transform.position);
-            crowdFollowingForce += (goalForce + 1000f * Mathf.Exp(collisionDist / Parameters.B) * -desiredDir);
-
+            neighborDir += neighbor.direction;
             ++count;
         }
 
-        if (count == 0) return crowdFollowingForce;
-        return (crowdFollowingForce / count);
+        var weight = .6f;
+        var desiredDir = path.Count == 0 ? Vector3.zero : (path[0] - transform.position);
+        direction = desiredDir.normalized;
+        var avgDesiredDir = count == 0 ? Vector3.zero : (neighborDir / count).normalized;
+        desiredDir = (1 - weight) * desiredDir.normalized + weight * avgDesiredDir;
+        var desiredSpeed = Mathf.Min(desiredDir.magnitude, 5f);
+        return (mass / Parameters.T) * (desiredDir.normalized * desiredSpeed - rb.velocity);
+
+        //old code, works but not according to the ppt slide
+        //Vector3 crowdFollowingForce = Vector3.zero;
+        //var count = 0;
+        //foreach (var neighborGameObject in perceivedNeighbors)
+        //{
+        //    if (!AgentManager.IsAgent(neighborGameObject)) continue;
+        //    var neighbor = AgentManager.agentsObjs[neighborGameObject];
+        //    var desiredDir = (neighbor.transform.position - transform.position);
+        //    var desiredSpeed = Mathf.Min(desiredDir.magnitude - (radius * 3), 5f);
+        //    var goalForce = (desiredDir.normalized * desiredSpeed - rb.velocity) / Time.deltaTime;
+        //    var collisionDist = (radius + neighbor.radius) - Vector3.Distance(transform.position, neighborGameObject.transform.position);
+        //    crowdFollowingForce += (goalForce + 1000f * Mathf.Exp(collisionDist / Parameters.B) * -desiredDir);
+
+        //    ++count;
+        //}
+
+        //if (count == 0) return crowdFollowingForce;
+        //return (crowdFollowingForce / count);
+
     }
 
     public void ApplyForce()
