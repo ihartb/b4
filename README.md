@@ -12,7 +12,7 @@
     - [x] pursue and evade
     - [ ] wall follower
     - [x] growing spiral
-- [ ] 2 of the following group behaviors:
-    - [ ] Leader Following
-    - [ ] Crowd following
+- [x] 2 of the following group behaviors:
+    - [x] Leader Following - 51 AGENTS
+    - [x] Crowd following - 100 AGENTS
     - [ ] Queueing
