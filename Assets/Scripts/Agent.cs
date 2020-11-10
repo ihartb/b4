@@ -24,8 +24,8 @@ public class Agent : MonoBehaviour
     private HashSet<GameObject> perceivedNeighbors = new HashSet<GameObject>();
     private HashSet<GameObject> perceivedWalls = new HashSet<GameObject>();
 
-    private float speed = 5f;
-    private float rotation = 2f;
+    private float speed = 1f;
+    private float rotation = 1f;
     private Vector2 currentRotation;
     private AgentManager manager;
     private Vector3 goal = Vector3.zero;
@@ -80,7 +80,7 @@ public class Agent : MonoBehaviour
 
     private void Update()
     {
-        var verticalSpeed = speed;
+        var verticalSpeed = 0.1f*speed;
         float angle = Mathf.PI * currentRotation.x / 180.0f;
         // print(currentRotation.x.ToString() + " "+currentRotation.y.ToString());
         float forward_component = Input.GetAxis("Horizontal") * Mathf.Cos(-angle)
@@ -224,6 +224,7 @@ public class Agent : MonoBehaviour
 
     private Vector3 ComputeForce()
     {
+        if (i++ < 20) return Vector3.zero;
         Vector3 force;
         if (growingSpiral)
         {
@@ -256,11 +257,9 @@ public class Agent : MonoBehaviour
         }
         else
         {
-            force = CalculateGoalForce();
+            force = 1.5f*CalculateGoalForce();
             force += CalculateWallForce();
-            if (i > 10 && transform.position.x < 15 && transform.position.y < 15 && transform.position.x > -15 && transform.position.y > -15)
-                force += CalculateAgentForce();
-            i++;
+            force += .9f*CalculateAgentForce();
         }
         force.y = 0;
         //print("force mag: "+force.magnitude.ToString()+"\t"+force.ToString());
@@ -268,7 +267,7 @@ public class Agent : MonoBehaviour
 
         if (force != Vector3.zero)
         {
-            return force.normalized * Mathf.Min(force.magnitude, Parameters.maxSpeed);
+            return force.normalized * Mathf.Min(force.magnitude, 0.5f*Parameters.maxSpeed);
         }
         else
         {
@@ -305,6 +304,7 @@ public class Agent : MonoBehaviour
             var neighbor = AgentManager.agentsObjs[neighborGameObject];
             var dir = (transform.position - neighborGameObject.transform.position).normalized;
             var collisionDist = (radius + neighbor.radius) - Vector3.Distance(transform.position, neighborGameObject.transform.position);
+            // var collisionDist = (.3f + .3f) - Vector3.Distance(transform.position, neighborGameObject.transform.position);
             // var funcG = Mathf.Max(0f, collisionDist);
             var funcG = Mathf.Abs(collisionDist) < 0.00000000001f ? collisionDist : 0f;
             // var funcG = collisionDist;
@@ -322,10 +322,10 @@ public class Agent : MonoBehaviour
     private Vector3 CalculateWallForce()
     {
         Vector3 wallForce = Vector3.zero;
-        if (transform.position.x > 15.5) wallForce += new Vector3(-10f,0f,0f);
-        else if (transform.position.x < -15.5) wallForce += new Vector3(10f,0f,0f);
-        else if (transform.position.z > 15.5) wallForce += new Vector3(0f,0f,-10f);
-        else if (transform.position.z < -15.5) wallForce += new Vector3(0f,0f,10f);
+        // if (transform.position.x > 15.2) wallForce += new Vector3(-5f,0f,0f);
+        // else if (transform.position.x < -15.2) wallForce += new Vector3(5f,0f,0f);
+        // else if (transform.position.z > 15.2) wallForce += new Vector3(0f,0f,-5f);
+        // else if (transform.position.z < -15.2) wallForce += new Vector3(0f,0f,5f);
         foreach (var neighborGameObject in perceivedWalls)
         {
             var dist = transform.position - neighborGameObject.transform.position;
@@ -334,15 +334,15 @@ public class Agent : MonoBehaviour
                 neighborGameObject.name == "Cube (2)")
             {
                 dist.x = 0f;
-                if (neighborGameObject.name == "Cube" && dist.z > -0.5) dist.z = -0.25f;
-                else if (neighborGameObject.name == "Cube (2)" && dist.z < 0.5) dist.z = 0.25f;
+                if (neighborGameObject.name == "Cube" && dist.z > -(radius+0.5f)) dist.z = -0.25f;
+                else if (neighborGameObject.name == "Cube (2)" && dist.z < (radius+0.5f)) dist.z = 0.25f;
             }
             else if (neighborGameObject.name == "Cube (6)" ||
                 neighborGameObject.name == "Cube (7)")
             {
                 dist.z = 0f;
-                if (neighborGameObject.name == "Cube (6)" && dist.x > -0.5) dist.x = -0.25f;
-                else if (neighborGameObject.name == "Cube (7)" && dist.x < 0.5) dist.x = 0.25f;
+                if (neighborGameObject.name == "Cube (6)" && dist.x > -(radius+0.5f)) dist.x = -0.25f;
+                else if (neighborGameObject.name == "Cube (7)" && dist.x < (radius+0.5f)) dist.x = 0.25f;
             }
             else
             {
@@ -359,16 +359,16 @@ public class Agent : MonoBehaviour
             //     print("wall "+neighborGameObject.name);
             // }
 
-            var collisionDist = 0.5f-dist.magnitude;
+            var collisionDist = (radius+0.5f)-dist.magnitude;
             // var funcG = collisionDist;
             var funcG = Mathf.Abs(collisionDist) < 0.00000000001f ? collisionDist : 0f;
             var tangent = Vector3.Cross(Vector3.up, dist.normalized).normalized;
             Vector3 n = dist.normalized * 1f / dist.magnitude;
             n = n.normalized;
-            wallForce += (Parameters.WALL_A * Mathf.Exp(collisionDist / Parameters.WALL_B)) * n;
+            wallForce += 0.05f*(Parameters.WALL_A * Mathf.Exp(collisionDist / Parameters.WALL_B)) * n;
             wallForce += (Parameters.WALL_k * funcG) * n;
             wallForce -= Parameters.WALL_Kappa * funcG * Vector3.Dot(rb.velocity, tangent) * tangent;
-            print(n.ToString() + "\t"+collisionDist.ToString() + "\t"+dist.magnitude.ToString() + "\t"+ wallForce.ToString());
+            // print(n.ToString() + "\t"+collisionDist.ToString() + "\t"+dist.magnitude.ToString() + "\t"+ wallForce.ToString());
         }
         return wallForce;
     }
@@ -531,7 +531,7 @@ public class Agent : MonoBehaviour
         }
         else
         {
-            print("unknown found "+other.gameObject.name);
+            // print("unknown found "+other.gameObject.name);
         }
     }
 
