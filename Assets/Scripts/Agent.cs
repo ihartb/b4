@@ -11,9 +11,10 @@ public class Agent : MonoBehaviour
     public float mass;
     public float perceptionRadius;
     private bool growingSpiral = false;
-    private bool pursueAndEvade = true;
+    private bool pursueAndEvade = false;
     private bool leaderFollowing = false;
     private bool crowdFollowing = false;
+    private int i = 0;
 
     private List<Vector3> path;
     private List<Vector3> spiral;
@@ -221,7 +222,6 @@ public class Agent : MonoBehaviour
 
     private Vector3 ComputeForce()
     {
-
         Vector3 force;
         if (growingSpiral)
         {
@@ -251,7 +251,9 @@ public class Agent : MonoBehaviour
         {
             force = CalculateGoalForce();
             force += CalculateWallForce();
-            force += CalculateAgentForce();
+            if (i > 10 && transform.position.x < 15 && transform.position.y < 15 && transform.position.x > -15 && transform.position.y > -15)
+                force += CalculateAgentForce();
+            i++;
         }
         force.y = 0;
         //print("force mag: "+force.magnitude.ToString()+"\t"+force.ToString());
