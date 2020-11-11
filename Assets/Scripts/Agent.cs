@@ -10,8 +10,9 @@ public class Agent : MonoBehaviour
     public float radius;
     public float mass;
     public float perceptionRadius;
-    private bool growingSpiral = false;
-    private bool pursueAndEvade = false;
+    // all false for part 1
+    private bool growingSpiral = false; // remove walls in scene before running
+    private bool pursueAndEvade = false; // change perception in agentManager to 30 before running
     private bool leaderFollowing = false;
     private bool crowdFollowing = false;
     private int i = 0;
@@ -140,8 +141,8 @@ public class Agent : MonoBehaviour
         else if (leaderFollowing)
         {
             var leaderVel = leader.GetVelocity();
-            var followerGoal = leader.transform.position - leaderVel * Time.deltaTime;
-            if (leaderVel == Vector3.zero) followerGoal = leader.transform.position - prevLeaderVel * Time.deltaTime;
+            var followerGoal = leader.transform.position - 2f*leaderVel * Time.deltaTime;
+            if (leaderVel == Vector3.zero) followerGoal = leader.transform.position - 2f*prevLeaderVel * Time.deltaTime;
             else prevLeaderVel = leaderVel;
             ComputePath(followerGoal);
             ComputePathHelper();
@@ -248,7 +249,7 @@ public class Agent : MonoBehaviour
         {
             force = CrowdFollowingGoalForce();
             force += CalculateWallForce();
-            force += CalculateAgentForce();
+            force += 0.8f*CalculateAgentForce();
 
             //old code not according to ppt
             //var weight = .4f;
@@ -257,7 +258,7 @@ public class Agent : MonoBehaviour
         }
         else
         {
-            force = 1.5f*CalculateGoalForce();
+            force = 100f*CalculateGoalForce();
             force += CalculateWallForce();
             force += .9f*CalculateAgentForce();
         }
@@ -265,9 +266,10 @@ public class Agent : MonoBehaviour
         //print("force mag: "+force.magnitude.ToString()+"\t"+force.ToString());
         //var force = growingSpiral();
 
-        if (force != Vector3.zero)
+        if (force != Vector3.zero && !float.IsNaN(force.x) && !float.IsNaN(force.z))
         {
-            return force.normalized * Mathf.Min(force.magnitude, 0.5f*Parameters.maxSpeed);
+            // return force.normalized * Mathf.Min(force.magnitude, 0.5f*Parameters.maxSpeed);
+            return force.normalized * Mathf.Min(force.magnitude, Parameters.maxSpeed);
         }
         else
         {
@@ -365,7 +367,8 @@ public class Agent : MonoBehaviour
             var tangent = Vector3.Cross(Vector3.up, dist.normalized).normalized;
             Vector3 n = dist.normalized * 1f / dist.magnitude;
             n = n.normalized;
-            wallForce += 0.05f*(Parameters.WALL_A * Mathf.Exp(collisionDist / Parameters.WALL_B)) * n;
+            if (pursueAndEvade) wallForce += (Parameters.WALL_A * Mathf.Exp(collisionDist / Parameters.WALL_B)) * n;
+            else wallForce += 0.05f*(Parameters.WALL_A * Mathf.Exp(collisionDist / Parameters.WALL_B)) * n;
             wallForce += (Parameters.WALL_k * funcG) * n;
             wallForce -= Parameters.WALL_Kappa * funcG * Vector3.Dot(rb.velocity, tangent) * tangent;
             // print(n.ToString() + "\t"+collisionDist.ToString() + "\t"+dist.magnitude.ToString() + "\t"+ wallForce.ToString());
@@ -396,6 +399,7 @@ public class Agent : MonoBehaviour
     private Vector3 PursueAndEvade()
     {
         Vector3 pursueAndEvadeForce = Vector3.zero;
+        float closest_dist = 10000000f;
         if (Int32.Parse(name.Substring(5)) % 2 == 0)
         // Evader
         {
@@ -408,6 +412,10 @@ public class Agent : MonoBehaviour
                     // skip if seeing another evader
                     continue;
                 }
+                float dist = Vector3.Distance(transform.position, neighborGameObject.transform.position);
+                if (Mathf.Abs(dist) > closest_dist) continue;
+                closest_dist = Mathf.Abs(dist);
+
                 var desiredDir = transform.position - neighborGameObject.transform.position;
                 var desiredSpeed = Mathf.Min(desiredDir.magnitude, 5f);
                 pursueAndEvadeForce += (mass / Parameters.T) * (desiredDir.normalized * desiredSpeed - rb.velocity);
@@ -415,6 +423,12 @@ public class Agent : MonoBehaviour
                 // Vector3 dist = transform.position - neighborGameObject.transform.position - new Vector3(.5f,0f,.5f);
                 // Vector3 dir = dist.normalized;
                 // pursueAndEvadeForce += dir * 5f * dist.magnitude;
+                // var desiredDir1 = (- transform.position);
+                // var desiredSpeed1 = Mathf.Min(desiredDir1.magnitude, 1f);
+                // var goalForce = (mass / Parameters.T) * (desiredDir1.normalized * desiredSpeed1 - rb.velocity);
+                // pursueAndEvadeForce += goalForce;
+                Vector3 cornerForce = (- transform.position).normalized * 0.0001f*Mathf.Exp(Vector3.Distance(transform.position, Vector3.zero));
+                pursueAndEvadeForce += cornerForce;
             }
         }
         else
@@ -424,15 +438,25 @@ public class Agent : MonoBehaviour
             {
 
                 if (!AgentManager.IsAgent(neighborGameObject) ||
+                    // Int32.Parse(neighborGameObject.name.Substring(5))+1 != Int32.Parse(name.Substring(5)))
                     Int32.Parse(neighborGameObject.name.Substring(5)) % 2 == 1)
                 {
                     // skip if seeing another Pursuer
                     continue;
                 }
+                float dist = Vector3.Distance(transform.position, neighborGameObject.transform.position);
+                if (Mathf.Abs(dist) > closest_dist) continue;
+                closest_dist = Mathf.Abs(dist);
+
                 var desiredDir = (neighborGameObject.transform.position - transform.position);
                 var desiredSpeed = Mathf.Min(desiredDir.magnitude, 5f);
                 pursueAndEvadeForce += (mass / Parameters.T) * (desiredDir.normalized * desiredSpeed - rb.velocity);
 
+                // var desiredDir1 = (- transform.position);
+                // var desiredSpeed1 = Mathf.Min(desiredDir1.magnitude, 1f);
+                // var goalForce = (mass / Parameters.T) * (desiredDir1.normalized * desiredSpeed1 - rb.velocity);
+                // vector3 cornerForce = (- transform.position).normalized * Mathf.Exp();
+                // pursueAndEvadeForce += cornerForce;
                 // Vector3 dist = transform.position - neighborGameObject.transform.position - new Vector3(.5f,0f,.5f);
                 // Vector3 dir = dist.normalized;
                 // pursueAndEvadeForce -= dir * 5f * dist.magnitude;
@@ -449,13 +473,18 @@ public class Agent : MonoBehaviour
         {
 
             var leaderVelocity = leader.GetVelocity();
-            if (Vector3.Dot(transform.position, leaderVelocity) > 0 && leaderVelocity.magnitude > 1f)
+            // print(leaderVelocity.magnitude);
+            if (Vector3.Dot(transform.position- leader.goal, GetVelocity()) > 0)// && leaderVelocity.magnitude > .01f && leaderVelocity.magnitude < 4f)
+            // if (leaderVelocity.magnitude > prevLeaderVel.magnitude)
             {
                 var dir = transform.position - leader.transform.position;
                 var tangent = Vector3.Cross(Vector3.up, leaderVelocity).normalized;
                 var perpDistToLeader = Vector3.Dot(dir, tangent);
                 var sign = Mathf.Sign(perpDistToLeader);
-                leaderFollowingForce += (Mathf.Max(8f, Mathf.Exp(Parameters.B / perpDistToLeader)) * sign * tangent);
+                float gtfoStrength = 1f;
+                if (Vector3.Distance(transform.position, leader.transform.position) > 0.00001f)
+                    gtfoStrength = (Mathf.Max(1f,0.001f*Mathf.Exp(1f/Vector3.Distance(transform.position, leader.transform.position))));
+                leaderFollowingForce += (Mathf.Max(8f, Mathf.Exp(Parameters.B / perpDistToLeader)) * sign * gtfoStrength*tangent);
             }
         }
 
@@ -481,7 +510,7 @@ public class Agent : MonoBehaviour
         var avgDesiredDir = count == 0 ? Vector3.zero : (neighborDir / count).normalized;
         desiredDir = (1 - weight) * desiredDir.normalized + weight * avgDesiredDir;
         var desiredSpeed = Mathf.Min(desiredDir.magnitude, 5f);
-        return (mass / Parameters.T) * (desiredDir.normalized * desiredSpeed - rb.velocity);
+        return 10f*(mass / Parameters.T) * (desiredDir.normalized * desiredSpeed - rb.velocity);
 
         //old code, works but not according to the ppt slide
         //Vector3 crowdFollowingForce = Vector3.zero;
@@ -506,9 +535,12 @@ public class Agent : MonoBehaviour
 
     public void ApplyForce()
     {
-        var force = ComputeForce();
+        Vector3 force = ComputeForce();
         force.y = 0;
-
+        if (float.IsNaN(force.x) || float.IsNaN(force.z))
+        {
+            force = Vector3.zero;
+        }
         rb.AddForce(force / mass, ForceMode.Acceleration);
     }
 

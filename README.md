@@ -4,7 +4,7 @@
 - [x] goal forces
 - [x] agent forces
 - [x] wall forces
-    - [ ] Fix outer walls
+    - [x] Fix outer walls
 - [x] free look camera point click selection
 
 ## P2
